@@ -1,6 +1,8 @@
-from flask import Flask, jsonify
+from flask import Flask, request, jsonify
+
 app = Flask(__name__)
 
+# Endpoint utama yang sudah ada
 @app.route('/')
 def hello_world():
     return 'Halo! Aplikasi ini siap menerima webhook dari n8n.'
@@ -10,13 +12,13 @@ def hello_world():
 def handle_webhook():
     # Ambil data JSON yang dikirim oleh n8n
     data = request.json
-
+    
     # Cetak data yang diterima ke log untuk verifikasi
     print("=========================")
     print("Webhook diterima dari n8n!")
     print(f"Data: {data}")
     print("=========================")
-
+    
     # Kirim balasan kembali ke n8n
     return jsonify({"status": "sukses", "data_diterima": data}), 200
 
