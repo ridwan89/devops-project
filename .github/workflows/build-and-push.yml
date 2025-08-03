@@ -1,32 +1,49 @@
-name: Build and Push Docker Image
+name: Build, Push, and Deploy to Server
 
-# Workflow ini akan berjalan setiap kali ada 'push' ke branch 'main'
 on:
   push:
     branches: ["main"]
 
 jobs:
+  # JOB PERTAMA: MEMBANGUN IMAGE
   build:
-    # Pekerjaan ini akan berjalan di server Ubuntu virtual milik GitHub
     runs-on: ubuntu-latest
-
     steps:
-      # Langkah 1: Mengambil kode dari repository Anda
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Langkah 2: Login ke Docker Hub menggunakan secrets yang kita buat
       - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # Langkah 3: Membangun image dan mengirimnya ke Docker Hub
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
         with:
           context: .
           push: true
-          # Ganti 'ridwan89' dengan username Docker Hub Anda
-          tags: ridwan89/devops-project:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/devops-project:latest
+
+  # JOB KEDUA: DEPLOY KE SERVER (BERJALAN SETELAH BUILD SELESAI)
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      # INI BAGIAN YANG ANDA CARI
+      - name: Deploy to Server via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          passphrase: ${{ secrets.SSH_PASSPHRASE }} # Hapus baris ini jika key Anda tidak pakai passphrase
+          script: |
+            # Pindah ke direktori proyek (buat jika belum ada)
+            mkdir -p ~/app && cd ~/app
+            # Buat file docker-compose.yml terbaru dari secret
+            echo '${{ secrets.DOCKER_COMPOSE }}' > docker-compose.yml
+            # Tarik versi image terbaru dari Docker Hub
+            docker-compose pull
+            # Jalankan aplikasi (akan membuat ulang container yang berubah)
+            docker-compose up -d
